@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Task } from '../entities/task.entity';
 import { CreateTaskDto, UpdateTaskDto } from '../dto/create-task.dto';
 import { PrismaService } from 'src/common/services/prisma.service';
@@ -7,12 +7,12 @@ import { PrismaService } from 'src/common/services/prisma.service';
 export class TaskService {
   constructor(
     @Inject('MYSQL_CONNECTION') private mysql: any,
-    // @Inject('PG_CONNECTION') private pg: any,
     private prisma: PrismaService,
   ) {}
 
   public async getAllTasks(): Promise<Task[]> {
-    const tasks = await this.prisma.task.findMany({
+    // Solo para admin — devuelve todas las tareas
+    return await this.prisma.task.findMany({
       orderBy: [{ name: 'asc' }],
       select: {
         id: true,
@@ -24,43 +24,15 @@ export class TaskService {
         user_id: true,
       },
     });
-    return tasks;
   }
 
   public async getTaskById(id: number): Promise<Task | null> {
-    const task = await this.prisma.task.findUnique({
-      where: { id },
-    });
-    return task;
-  }
-
-  public async InsertTask(task: CreateTaskDto): Promise<Task> {
-    const newTask = await this.prisma.task.create({
-      data: task,
-    });
-    return newTask;
-  }
-
-  public async updateTask(
-    id: number,
-    taskUpdate: UpdateTaskDto,
-  ): Promise<Task> {
-    const taskUpdated = await this.prisma.task.update({
-      where: { id },
-      data: taskUpdate,
-    });
-    return taskUpdated;
-  }
-
-  public async deleteTask(id: number): Promise<Task> {
-    const taskDeleted = await this.prisma.task.delete({
-      where: { id },
-    });
-    return taskDeleted;
+    return await this.prisma.task.findUnique({ where: { id } });
   }
 
   public async getTasksByUserId(userId: number): Promise<Task[]> {
-    const tasks = await this.prisma.task.findMany({
+    // Cada usuario solo ve sus propias tareas
+    return await this.prisma.task.findMany({
       where: { user_id: userId },
       orderBy: [{ name: 'asc' }],
       select: {
@@ -73,6 +45,54 @@ export class TaskService {
         user_id: true,
       },
     });
-    return tasks;
+  }
+
+  public async insertTask(task: CreateTaskDto & { user_id: number }): Promise<Task> {
+    // user_id viene del JWT, no del body
+    return await this.prisma.task.create({ data: task });
+  }
+
+  public async updateTask(
+    id: number,
+    requestingUserId: number,
+    requestingUserRole: string,
+    taskUpdate: UpdateTaskDto,
+  ): Promise<Task> {
+    // Verificar que la tarea existe
+    const existingTask = await this.prisma.task.findUnique({ where: { id } });
+
+    if (!existingTask) {
+      throw new NotFoundException(`Tarea con id ${id} no encontrada`);
+    }
+
+    // Prevención de IDOR: solo el dueño o admin puede modificar
+    if (existingTask.user_id !== requestingUserId && requestingUserRole !== 'admin') {
+      throw new ForbiddenException('No tienes permiso para modificar esta tarea');
+    }
+
+    return await this.prisma.task.update({
+      where: { id },
+      data: taskUpdate,
+    });
+  }
+
+  public async deleteTask(
+    id: number,
+    requestingUserId: number,
+    requestingUserRole: string,
+  ): Promise<Task> {
+    // Verificar que la tarea existe
+    const existingTask = await this.prisma.task.findUnique({ where: { id } });
+
+    if (!existingTask) {
+      throw new NotFoundException(`Tarea con id ${id} no encontrada`);
+    }
+
+    // Prevención de IDOR: solo el dueño o admin puede eliminar
+    if (existingTask.user_id !== requestingUserId && requestingUserRole !== 'admin') {
+      throw new ForbiddenException('No tienes permiso para eliminar esta tarea');
+    }
+
+    return await this.prisma.task.delete({ where: { id } });
   }
 }
