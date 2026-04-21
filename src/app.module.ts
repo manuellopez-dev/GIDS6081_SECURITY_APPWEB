@@ -4,6 +4,7 @@ import { CommonModule } from './common/common.module';
 import { AuthModule } from './modules/auth/interface/auth.module';
 import { TaskModule } from './modules/task/interface/task.module';
 import { UserModule } from './modules/user/interface/user.module';
+import { AuditModule } from './modules/audit/interface/audit.nodule';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { UserModule } from './modules/user/interface/user.module';
     AuthModule,
     TaskModule,
     UserModule,
+    AuditModule,
   ],
 })
 export class AppModule {}
