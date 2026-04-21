@@ -1,57 +1,29 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 
 async function bootstrap() {
-  console.log('DATABASE_URL:', process.env.DATABASE_URL);
   const app = await NestFactory.create(AppModule);
 
-  app.enableCors({
-    origin: 'http://localhost:4200',
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  });
+  // Filtro global: nunca expone stack traces al cliente
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
-  // Uso de pipes de forma global
+  // Validación global: whitelist elimina campos no declarados en DTOs (previene mass assignment)
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
 
-  // Configuración de Swagger
-  const config = new DocumentBuilder()
-    .setTitle('API con vulnerabilidades de seguridad')
-    .setDescription('Documentacion de la API para pruebas.')
-    .setVersion('1.0.0')
-    .build();
+  // CORS para el frontend Angular
+  app.enableCors({
+    origin: 'http://localhost:4200',
+    credentials: true,
+  });
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
-
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(3000);
 }
 bootstrap();
-
-//? MYSQL
-//!npm i mysql2
-//!npm i @types/mysql2 -D
-
-//? POSTGRESQL
-//!npm i pg
-//!npm i @types/pg -D
-
-//? Install SWAGGER
-//! npm install @nestjs/swagger
-
-//! git commit -a "fix: CRUD funcional con base de datos y configuracion de SWAGGER"
-
-//! git commit -a "fix: Uso de prisma y correccion de CRUD (Task)"
-
-//? BYCRIPT
-//! npm i bcrypt
-//! npm i @types/bcrypt -D
-
-//! git commit -a "fix: CRUD de usuarios y creacion de rutas para la autenticacion"

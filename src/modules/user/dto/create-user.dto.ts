@@ -1,4 +1,12 @@
-import {IsEmail, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class CreateUserDto {
   @IsString()
@@ -23,8 +31,26 @@ export class CreateUserDto {
   @IsNotEmpty()
   email!: string;
 
+  /**
+   * Contraseña fuerte obligatoria:
+   * - Mínimo 8 caracteres
+   * - Al menos una mayúscula
+   * - Al menos un número
+   * - Al menos un carácter especial (!@#$%^&*)
+   */
   @IsString()
   @IsNotEmpty()
+  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
+  @MaxLength(100)
+  @Matches(/(?=.*[A-Z])/, {
+    message: 'La contraseña debe contener al menos una letra mayúscula',
+  })
+  @Matches(/(?=.*[0-9])/, {
+    message: 'La contraseña debe contener al menos un número',
+  })
+  @Matches(/(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/, {
+    message: 'La contraseña debe contener al menos un carácter especial',
+  })
   password!: string;
 }
 
@@ -47,11 +73,22 @@ export class UpdateUserDto {
   @MaxLength(100)
   username?: string;
 
+  @IsOptional()
   @IsEmail()
-  @IsNotEmpty()
   email?: string;
 
   @IsOptional()
   @IsString()
+  @MinLength(8, { message: 'La contraseña debe tener al menos 8 caracteres' })
+  @MaxLength(100)
+  @Matches(/(?=.*[A-Z])/, {
+    message: 'La contraseña debe contener al menos una letra mayúscula',
+  })
+  @Matches(/(?=.*[0-9])/, {
+    message: 'La contraseña debe contener al menos un número',
+  })
+  @Matches(/(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/, {
+    message: 'La contraseña debe contener al menos un carácter especial',
+  })
   password?: string;
 }
