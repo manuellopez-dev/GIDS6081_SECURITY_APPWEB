@@ -1,4 +1,4 @@
-import { Task } from "src/modules/task/entities/task.entity";
+import { Task } from 'src/modules/task/entities/task.entity';
 
 export class User {
   id!: number;
@@ -6,8 +6,8 @@ export class User {
   lastName!: string;
   username!: string;
   email!: string;
+  role!: string;
   password?: string;
   createdAt!: Date;
   task?: Task[];
 }
-
