@@ -24,13 +24,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       status = exception.getStatus();
       const exceptionResponse = exception.getResponse();
 
-      // Extraer mensaje legible sin exponer stack trace
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
-      } else if (
-        typeof exceptionResponse === 'object' &&
-        exceptionResponse !== null
-      ) {
+      } else if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
         const resp = exceptionResponse as Record<string, unknown>;
         if (Array.isArray(resp.message)) {
           message = (resp.message as string[]).join(', ');
@@ -38,8 +34,33 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           message = resp.message;
         }
       }
+    } else if (this.isPrismaError(exception)) {
+      // Manejar errores conocidos de Prisma sin exponer detalles técnicos
+      const prismaError = exception as any;
+
+      if (prismaError.code === 'P2002') {
+        status = HttpStatus.CONFLICT;
+        // Identificar qué campo está duplicado
+        const field = prismaError.meta?.target?.[0] || '';
+        if (field.includes('email')) {
+          message = 'El correo electrónico ya está registrado';
+        } else if (field.includes('username')) {
+          message = 'El nombre de usuario ya está en uso';
+        } else {
+          message = 'Ya existe un registro con esos datos';
+        }
+      } else if (prismaError.code === 'P2025') {
+        status = HttpStatus.NOT_FOUND;
+        message = 'El registro solicitado no existe';
+      } else {
+        status = HttpStatus.BAD_REQUEST;
+        message = 'Error al procesar la solicitud';
+      }
+
+      this.logger.error(
+        `Prisma error ${prismaError.code} en ${request.method} ${request.url}`,
+      );
     } else {
-      // Loggear internamente pero NO exponer al cliente
       this.logger.error(
         `Error no controlado en ${request.method} ${request.url}`,
         exception instanceof Error ? exception.stack : String(exception),
@@ -52,5 +73,14 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: request.url,
     });
+  }
+
+  private isPrismaError(exception: unknown): boolean {
+    return (
+      typeof exception === 'object' &&
+      exception !== null &&
+      'code' in exception &&
+      'clientVersion' in exception
+    );
   }
 }
