@@ -1,0 +1,43 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id           Int        @id @default(autoincrement())
+  name         String     @db.VarChar(200)
+  lastName     String     @db.VarChar(300)
+  email        String     @unique @db.VarChar(100)
+  username     String     @unique @db.VarChar(100)
+  password     String     @db.LongText
+  role         String     @default("user") @db.VarChar(20)
+  refreshToken String?    @db.LongText
+  createdAt    DateTime   @default(now())
+  task         Task[]
+  auditLogs    AuditLog[]
+}
+
+model Task {
+  id              Int      @id @default(autoincrement())
+  name            String   @db.VarChar(150)
+  description     String   @db.VarChar(200)
+  priority        Int
+  completed       Boolean
+  dateVencimiento String   @db.VarChar(150)
+  user_id         Int
+  user            User     @relation(fields: [user_id], references: [id])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  username  String   @db.VarChar(100)
+  action    String   @db.VarChar(100)
+  detail    String   @db.VarChar(500)
+  severity  String   @db.VarChar(20)
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
